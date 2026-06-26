@@ -1,17 +1,90 @@
+import os
 import asyncio
 import logging
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import CommandStart
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import CommandStart, Command
+from app.db.session import SessionLocal
+from app.db.models.job import Job, JobState
+from app.worker.tasks import process_media_job
 
-# TODO: Day 5 - Move to config/env
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN_HERE")
 
 dp = Dispatcher()
 bot = Bot(token=BOT_TOKEN)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: types.Message) -> None:
-    await message.answer("DMS'ye hoş geldiniz! Sistem durumu: Aktif.")
+    await message.answer(
+        "DMS'ye (Dormhi Media Server) hoş geldiniz!\n\n"
+        "Komutlar:\n"
+        "/download <url> - Verilen linkten video indirir.\n"
+        "/jobs - Aktif işlerinizi listeler.\n"
+        "Veya doğrudan bana bir video göndererek onarım/optimizasyon başlatabilirsiniz."
+    )
+
+@dp.message(Command("download"))
+async def command_download_handler(message: types.Message) -> None:
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer("Lütfen bir URL belirtin. Örnek: /download https://kick.com/...")
+        return
+        
+    url = args[1].strip()
+    
+    db = SessionLocal()
+    try:
+        job = Job(original_url=url, state=JobState.PENDING)
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        
+        # Trigger Celery Task
+        process_media_job.delay(job.id)
+        
+        await message.answer(f"✅ İndirme görevi kuyruğa eklendi! (Job ID: {job.id})\nDurumu öğrenmek için /jobs yazabilirsiniz.")
+    except Exception as e:
+        await message.answer(f"Hata oluştu: {str(e)}")
+    finally:
+        db.close()
+
+@dp.message(Command("jobs"))
+async def command_jobs_handler(message: types.Message) -> None:
+    db = SessionLocal()
+    try:
+        # Fetch active jobs
+        jobs = db.query(Job).filter(Job.state.in_([JobState.PENDING, JobState.DOWNLOADING, JobState.PROCESSING])).all()
+        if not jobs:
+            await message.answer("Şu an aktif bir iş bulunmuyor.")
+            return
+            
+        text = "Aktif İşler:\n"
+        for j in jobs:
+            text += f"ID: {j.id} | Durum: {j.state.value} | URL: {str(j.original_url)[:30]}...\n"
+            
+        await message.answer(text)
+    finally:
+        db.close()
+
+@dp.message(F.video)
+async def handle_video_upload(message: types.Message) -> None:
+    # A user uploaded a video for repair/optimization
+    file_id = message.video.file_id
+    await message.answer("Video alındı. Onarım/Optimizasyon kuyruğuna ekleniyor...")
+    
+    db = SessionLocal()
+    try:
+        job = Job(original_url=f"tg_file://{file_id}", state=JobState.PENDING)
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        
+        process_media_job.delay(job.id)
+        
+        await message.answer(f"✅ Onarım görevi kuyruğa eklendi! (Job ID: {job.id})")
+    except Exception as e:
+        await message.answer(f"Hata oluştu: {str(e)}")
+    finally:
+        db.close()
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
