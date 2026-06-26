@@ -1,11 +1,14 @@
 from app.worker.celery_app import celery_app
 from app.db.session import SessionLocal
 from app.db.models.job import Job, JobState
+from app.plugins.downloaders.factory import get_downloader
 import time
+import os
+
+DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "/data/downloads")
 
 @celery_app.task(bind=True)
 def process_media_job(self, job_id: int):
-    # This is just a stub for Day 2. Actual processing logic comes in Days 3-4
     db = SessionLocal()
     job = db.query(Job).filter(Job.id == job_id).first()
     
@@ -14,14 +17,22 @@ def process_media_job(self, job_id: int):
         return "Job not found"
     
     try:
-        # State transitions simulation
+        # 1. Download Phase
         job.state = JobState.DOWNLOADING
         db.commit()
-        time.sleep(2) # Simulate download
         
+        downloader = get_downloader(job.original_url)
+        downloaded_file = downloader.download(job.original_url, DOWNLOAD_DIR)
+        
+        if not downloaded_file:
+            raise Exception("Download failed, no file returned.")
+            
+        job.file_path = downloaded_file
         job.state = JobState.PROCESSING
         db.commit()
-        time.sleep(2) # Simulate processing
+        
+        # 2. Processing Phase (To be implemented in Day 4)
+        time.sleep(1) # Stub for Day 4 processing logic
         
         job.state = JobState.COMPLETED
         db.commit()
