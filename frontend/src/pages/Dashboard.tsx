@@ -15,10 +15,17 @@ export function Dashboard() {
 
   const fetchJobs = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/jobs');
+      const token = localStorage.getItem('dms_token');
+      const res = await axios.get('http://localhost:8000/api/jobs', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setJobs(res.data);
     } catch (e) {
       console.error(e);
+      if (axios.isAxiosError(e) && e.response?.status === 401) {
+        localStorage.removeItem('dms_token');
+        window.location.href = '/login';
+      }
     } finally {
       setLoading(false);
     }
