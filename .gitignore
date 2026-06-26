@@ -1,20 +1,7 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
 .env
-venv/
-env/
-.venv/
-data/
-
-# Node
+__pycache__/
+*.pyc
 node_modules/
 dist/
-.env.local
-.eslintcache
-
-# OS
+data/dms.db
 .DS_Store
-Thumbs.db

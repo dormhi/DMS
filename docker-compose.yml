@@ -9,6 +9,8 @@ services:
     volumes:
       - ./backend:/app
       - ./data:/data
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=sqlite:////data/dms.db
       - REDIS_URL=redis://redis:6379/0
@@ -22,6 +24,8 @@ services:
     volumes:
       - ./backend:/app
       - ./data:/data
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=sqlite:////data/dms.db
       - REDIS_URL=redis://redis:6379/0
