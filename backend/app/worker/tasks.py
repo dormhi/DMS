@@ -31,9 +31,12 @@ def process_media_job(self, job_id: int):
         job.state = JobState.PROCESSING
         db.commit()
         
-        # 2. Processing Phase (To be implemented in Day 4)
-        time.sleep(1) # Stub for Day 4 processing logic
+        # 2. Processing Phase
+        from app.plugins.processors.normalize import NormalizeProcessor
+        processor = NormalizeProcessor()
+        final_file_path = processor.process(downloaded_file)
         
+        job.file_path = final_file_path
         job.state = JobState.COMPLETED
         db.commit()
         
