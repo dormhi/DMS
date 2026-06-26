@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.db.models.job import Job
 
 app = FastAPI(
     title="Dormhi Media Server (DMS)",
@@ -18,6 +21,12 @@ app.add_middleware(
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "DMS Backend is running."}
+
+@app.get("/api/jobs")
+def get_jobs(db: Session = Depends(get_db)):
+    # Return all jobs, newest first
+    jobs = db.query(Job).order_by(Job.created_at.desc()).all()
+    return jobs
 
 if __name__ == "__main__":
     import uvicorn

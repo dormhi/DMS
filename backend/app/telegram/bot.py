@@ -19,8 +19,28 @@ async def command_start_handler(message: types.Message) -> None:
         "Komutlar:\n"
         "/download <url> - Verilen linkten video indirir.\n"
         "/jobs - Aktif işlerinizi listeler.\n"
+        "/help - Sistem çalışma mantığını gösterir.\n"
         "Veya doğrudan bana bir video göndererek onarım/optimizasyon başlatabilirsiniz."
     )
+
+@dp.message(Command("help"))
+async def command_help_handler(message: types.Message) -> None:
+    help_text = (
+        "🤖 *DMS (Dormhi Media Server) Çalışma Mantığı*\n\n"
+        "Ben, cihazınızı yormadan videolarınızı sunucuda indirip, "
+        "en iyi ve sorunsuz kaliteye getiren medya asistanınızım.\n\n"
+        "📥 *İndirme (/download <link>)*\n"
+        "1. Gönderdiğiniz linki analiz eder (Kick, YouTube vb.).\n"
+        "2. Arka planda sunucuya indirir.\n"
+        "3. İnen videoyu inceler, uyumsuzluk varsa düzeltir.\n\n"
+        "🛠 *Onarım (Doğrudan Video Gönderme)*\n"
+        "Eğer bana herhangi bir bozuk/uyumsuz video dosyası yollarsanız, "
+        "bunu analiz edip donanım dostu, optimize edilmiş (h264/aac) formata "
+        "sokarak kütüphaneye kaydederim.\n\n"
+        "📊 *Durum Takibi (/jobs)*\n"
+        "Kuyruktaki veya işlenen dosyalarınızın ne durumda olduğunu bu komutla görebilirsiniz."
+    )
+    await message.answer(help_text, parse_mode="Markdown")
 
 @dp.message(Command("download"))
 async def command_download_handler(message: types.Message) -> None:
