@@ -4,4 +4,7 @@ __pycache__/
 node_modules/
 dist/
 data/dms.db
+backend/venv/
+backend/test_run.py
+backend/dms.db
 .DS_Store

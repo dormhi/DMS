@@ -15,10 +15,7 @@ export function Dashboard() {
 
   const fetchJobs = async () => {
     try {
-      const token = localStorage.getItem('dms_token');
-      const res = await axios.get('http://localhost:8000/api/jobs', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get('/api/jobs');
       setJobs(res.data);
     } catch (e) {
       console.error(e);

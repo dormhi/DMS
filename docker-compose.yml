@@ -8,7 +8,6 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
       - ./data:/data
     env_file:
       - .env
@@ -24,7 +23,22 @@ services:
     restart: unless-stopped
     command: celery -A app.worker.celery_app worker --loglevel=info
     volumes:
-      - ./backend:/app
+      - ./data:/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:////data/dms.db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+
+  bot:
+    build: ./backend
+    container_name: dms_bot
+    restart: unless-stopped
+    command: python -m app.telegram.bot
+    volumes:
       - ./data:/data
     env_file:
       - .env
@@ -52,11 +66,8 @@ services:
     restart: unless-stopped
     ports:
       - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
 
 volumes:
   redis_data:

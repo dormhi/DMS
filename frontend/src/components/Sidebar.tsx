@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, Library as LibraryIcon, Settings, Activity } from 'lucide-react';
+import { Home, Library as LibraryIcon, Activity } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -15,7 +15,6 @@ export function Sidebar() {
   const navItems = [
     { name: t('queue') || 'Dashboard', path: '/', icon: Home },
     { name: t('library') || 'Library', path: '/library', icon: LibraryIcon },
-    { name: t('settings') || 'Settings', path: '/settings', icon: Settings },
   ];
 
   return (
