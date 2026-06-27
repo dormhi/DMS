@@ -26,8 +26,12 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "DMS_FALLBACK_SECRET_DO_NOT_USE_IN_PROD
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 
-ADMIN_USER = os.getenv("ADMIN_USER", "admin")
-ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
+ADMIN_USERS_ENV = os.getenv("ADMIN_USERS", "admin:admin,dormhi:dormhi")
+USERS = {}
+for pair in ADMIN_USERS_ENV.split(','):
+    if ':' in pair:
+        u, p = pair.split(':', 1)
+        USERS[u.strip()] = p.strip()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
@@ -46,7 +50,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        if username is None or username != ADMIN_USER:
+        if username is None or username not in USERS:
             raise credentials_exception
         return username
     except jwt.PyJWTError:
@@ -54,7 +58,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @app.post("/api/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username != ADMIN_USER or form_data.password != ADMIN_PASS:
+    user_pass = USERS.get(form_data.username)
+    if not user_pass or user_pass != form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
