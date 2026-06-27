@@ -4,6 +4,8 @@ from app.db.models.job import Job, JobState
 from app.plugins.downloaders.factory import get_downloader
 import time
 import os
+import requests
+import logging
 
 DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "/data/downloads")
 
@@ -37,6 +39,24 @@ def process_media_job(self, job_id: int):
         final_file_path = processor.process(downloaded_file)
         
         job.file_path = final_file_path
+        
+        # 3. Uploading Phase
+        if job.chat_id:
+            job.state = JobState.UPLOADING
+            db.commit()
+            
+            bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+            if bot_token and os.path.exists(final_file_path):
+                url = f"https://api.telegram.org/bot{bot_token}/sendVideo"
+                with open(final_file_path, "rb") as video_file:
+                    resp = requests.post(
+                        url,
+                        data={"chat_id": job.chat_id, "caption": "✅ İşleminiz başarıyla tamamlandı!"},
+                        files={"video": video_file}
+                    )
+                    if resp.status_code != 200:
+                        logging.error(f"Telegram upload failed: {resp.text}")
+                        
         job.state = JobState.COMPLETED
         db.commit()
         

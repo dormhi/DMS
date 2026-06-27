@@ -53,7 +53,7 @@ async def command_download_handler(message: types.Message) -> None:
     
     db = SessionLocal()
     try:
-        job = Job(original_url=url, state=JobState.PENDING)
+        job = Job(original_url=url, chat_id=str(message.chat.id), state=JobState.PENDING)
         db.add(job)
         db.commit()
         db.refresh(job)
@@ -93,7 +93,7 @@ async def handle_video_upload(message: types.Message) -> None:
     
     db = SessionLocal()
     try:
-        job = Job(original_url=f"tg_file://{file_id}", state=JobState.PENDING)
+        job = Job(original_url=f"tg_file://{file_id}", chat_id=str(message.chat.id), state=JobState.PENDING)
         db.add(job)
         db.commit()
         db.refresh(job)

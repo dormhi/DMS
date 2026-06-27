@@ -18,6 +18,7 @@ class Job(Base):
     id = Column(Integer, primary_key=True, index=True)
     original_url = Column(String, index=True, nullable=True)
     file_path = Column(String, nullable=True)
+    chat_id = Column(String, nullable=True)
     state = Column(Enum(JobState), default=JobState.PENDING, index=True)
     error_message = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
