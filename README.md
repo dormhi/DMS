@@ -38,16 +38,17 @@ DMS is highly modular. Adding a new downloader is as simple as creating a short 
 - A Telegram Bot Token. (You can get one from [@BotFather](https://t.me/BotFather) on Telegram).
 
 ### 2. Setup
-1. Clone this repository to your server/local machine.
-2. Open `docker-compose.yml` and add your Telegram Bot Token. For production, pass it as an environment variable or create an `.env` file for docker-compose:
-   ```yaml
-   backend:
-     environment:
-       - TELEGRAM_BOT_TOKEN=your_token_here
-   worker:
-     environment:
-       - TELEGRAM_BOT_TOKEN=your_token_here
+1. Clone this repository to your server/local machine:
+   ```bash
+   git clone https://github.com/dormhi/DMS.git
+   cd DMS
    ```
+2. Copy the example environment file and fill in your details:
+   ```bash
+   cp .env.example .env
+   nano .env
+   ```
+   Add your `TELEGRAM_BOT_TOKEN`, choose an `ADMIN_USER` and `ADMIN_PASS` for the Web UI, and set a random `JWT_SECRET_KEY`.
 3. Start the system:
    ```bash
    docker-compose up -d --build
@@ -94,16 +95,17 @@ Sistem son derece modülerdir (Clean Code). Yeni bir platform indirme desteği e
 - Bir Telegram Bot Token'ına ihtiyacınız var. (Telegram'da [@BotFather](https://t.me/BotFather) üzerinden edinebilirsiniz).
 
 ### 2. Kurulum
-1. Repoyu sunucunuza klonlayın.
-2. `docker-compose.yml` dosyasını açıp bot token'ınızı ekleyin. İdeal olanı bir `.env` dosyası kullanmaktır:
-   ```yaml
-   backend:
-     environment:
-       - TELEGRAM_BOT_TOKEN=sizin_bot_tokeniniz
-   worker:
-     environment:
-       - TELEGRAM_BOT_TOKEN=sizin_bot_tokeniniz
+1. Repoyu sunucunuza klonlayın:
+   ```bash
+   git clone https://github.com/dormhi/DMS.git
+   cd DMS
    ```
+2. Örnek çevre değişkenleri (environment) şablonunu kopyalayıp kendi bilgilerinizi girin:
+   ```bash
+   cp .env.example .env
+   nano .env
+   ```
+   İçine `TELEGRAM_BOT_TOKEN` bilginizi, siteye girmek için istediğiniz `ADMIN_USER` ile `ADMIN_PASS` şifrenizi ve rastgele bir `JWT_SECRET_KEY` girip kaydedin.
 3. Sistemi ayağa kaldırın:
    ```bash
    docker-compose up -d --build
