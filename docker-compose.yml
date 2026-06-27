@@ -4,6 +4,7 @@ services:
   backend:
     build: ./backend
     container_name: dms_backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
@@ -20,6 +21,7 @@ services:
   worker:
     build: ./backend
     container_name: dms_worker
+    restart: unless-stopped
     command: celery -A app.worker.celery_app worker --loglevel=info
     volumes:
       - ./backend:/app
@@ -36,6 +38,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: dms_redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -46,6 +49,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: dms_frontend
+    restart: unless-stopped
     ports:
       - "5173:5173"
     volumes:
