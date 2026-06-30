@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Clock, CheckCircle, AlertCircle, RefreshCw, Loader2, Upload } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, RefreshCw, Loader2, Upload, WifiOff } from 'lucide-react';
 
 interface Job {
   id: number;
@@ -13,13 +13,16 @@ interface Job {
 export function Dashboard() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(false);
 
   const fetchJobs = async () => {
     try {
       const res = await axios.get('/api/jobs');
       setJobs(res.data);
+      setConnectionError(false);
     } catch (e) {
       console.error(e);
+      setConnectionError(true);
     } finally {
       setLoading(false);
     }
@@ -60,6 +63,16 @@ export function Dashboard() {
         <p className="text-gray-400 mt-1">Real-time status of your media server jobs.</p>
       </div>
 
+      {connectionError && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-5 py-4 flex items-center gap-3">
+          <WifiOff className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <div>
+            <p className="text-red-400 font-medium text-sm">Backend bağlantısı kurulamıyor</p>
+            <p className="text-red-400/60 text-xs mt-0.5">API sunucusuna ulaşılamıyor. Lütfen backend konteynerinin çalıştığından emin olun.</p>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
@@ -99,7 +112,7 @@ export function Dashboard() {
                     </td>
                   </tr>
                 ))}
-                {jobs.length === 0 && (
+                {jobs.length === 0 && !connectionError && (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center justify-center">

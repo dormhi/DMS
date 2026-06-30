@@ -14,6 +14,7 @@ services:
     environment:
       - DATABASE_URL=sqlite:////data/dms.db
       - REDIS_URL=redis://redis:6379/0
+      - DOWNLOAD_DIR=/data/downloads
     depends_on:
       - redis
 
@@ -21,7 +22,7 @@ services:
     build: ./backend
     container_name: dms_worker
     restart: unless-stopped
-    command: celery -A app.worker.celery_app worker --loglevel=info
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=2
     volumes:
       - ./data:/data
     env_file:
@@ -29,6 +30,7 @@ services:
     environment:
       - DATABASE_URL=sqlite:////data/dms.db
       - REDIS_URL=redis://redis:6379/0
+      - DOWNLOAD_DIR=/data/downloads
     depends_on:
       - redis
       - backend
@@ -45,6 +47,7 @@ services:
     environment:
       - DATABASE_URL=sqlite:////data/dms.db
       - REDIS_URL=redis://redis:6379/0
+      - DOWNLOAD_DIR=/data/downloads
     depends_on:
       - redis
       - backend
