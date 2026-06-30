@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Clock, CheckCircle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, RefreshCw, Loader2, Upload } from 'lucide-react';
 
 interface Job {
   id: number;
   original_url: string;
   state: string;
+  error_message: string | null;
   created_at: string;
 }
 
@@ -19,10 +20,6 @@ export function Dashboard() {
       setJobs(res.data);
     } catch (e) {
       console.error(e);
-      if (axios.isAxiosError(e) && e.response?.status === 401) {
-        localStorage.removeItem('dms_token');
-        window.location.href = '/login';
-      }
     } finally {
       setLoading(false);
     }
@@ -40,6 +37,7 @@ export function Dashboard() {
       case 'failed': return 'text-red-400 bg-red-400/10 border-red-400/20';
       case 'processing': return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
       case 'downloading': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+      case 'uploading': return 'text-purple-400 bg-purple-400/10 border-purple-400/20';
       default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
     }
   };
@@ -48,6 +46,7 @@ export function Dashboard() {
     switch(state) {
       case 'completed': return <CheckCircle className="w-4 h-4" />;
       case 'failed': return <AlertCircle className="w-4 h-4" />;
+      case 'uploading': return <Upload className="w-4 h-4 animate-pulse" />;
       case 'processing': 
       case 'downloading': return <RefreshCw className="w-4 h-4 animate-spin" />;
       default: return <Clock className="w-4 h-4" />;
@@ -83,10 +82,17 @@ export function Dashboard() {
                     <td className="px-6 py-4 font-mono text-gray-500 group-hover:text-gray-400 transition-colors">#{job.id}</td>
                     <td className="px-6 py-4 max-w-xs truncate font-medium text-gray-200">{job.original_url}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border shadow-sm ${getStateColor(job.state)}`}>
-                        {getStateIcon(job.state)}
-                        <span className="capitalize">{job.state}</span>
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border shadow-sm w-fit ${getStateColor(job.state)}`}>
+                          {getStateIcon(job.state)}
+                          <span className="capitalize">{job.state}</span>
+                        </span>
+                        {job.state === 'failed' && job.error_message && (
+                          <span className="text-xs text-red-400/70 truncate max-w-[200px]" title={job.error_message}>
+                            {job.error_message}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(job.created_at).toLocaleString()}
