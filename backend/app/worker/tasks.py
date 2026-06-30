@@ -1,5 +1,5 @@
 from app.worker.celery_app import celery_app
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, init_db
 from app.db.models.job import Job, JobState
 from app.plugins.downloaders.factory import get_downloader
 import time
@@ -7,7 +7,11 @@ import os
 import requests
 import logging
 
+# Create tables if they don't exist yet (worker runs as separate process)
+init_db()
+
 DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "/data/downloads")
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 @celery_app.task(bind=True)
 def process_media_job(self, job_id: int):

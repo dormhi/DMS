@@ -3,9 +3,12 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, init_db
 from app.db.models.job import Job, JobState
 from app.worker.tasks import process_media_job
+
+# Create tables if they don't exist yet (bot runs as separate process)
+init_db()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN_HERE")
 
@@ -71,6 +74,8 @@ async def command_download_handler(message: types.Message) -> None:
 async def command_jobs_handler(message: types.Message) -> None:
     db = SessionLocal()
     try:
+        # Refresh to see worker updates
+        db.expire_all()
         # Fetch active jobs
         jobs = db.query(Job).filter(Job.state.in_([JobState.PENDING, JobState.DOWNLOADING, JobState.PROCESSING])).all()
         if not jobs:
