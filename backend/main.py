@@ -1,9 +1,11 @@
 import os
-from fastapi import FastAPI
+import jwt
+from datetime import datetime, timedelta
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from fastapi import Depends
 from app.db.session import get_db, init_db
 from app.db.models.job import Job, JobState
 
@@ -31,13 +33,54 @@ app.add_middleware(
 # Serve downloaded/processed files as static
 app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 
+# ─── Auth (hardcoded) ───────────────────────────────────────────────
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin"
+JWT_SECRET = "dms_hardcoded_secret_key_2024"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_DAYS = 30
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
+
+def create_token(username: str) -> str:
+    payload = {
+        "sub": username,
+        "exp": datetime.utcnow() + timedelta(days=JWT_EXPIRE_DAYS),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return username
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# ─── Public endpoints ──────────────────────────────────────────────
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "DMS Backend is running."}
 
+@app.post("/api/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    if form_data.username != ADMIN_USERNAME or form_data.password != ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+    token = create_token(form_data.username)
+    return {"access_token": token, "token_type": "bearer"}
+
+# ─── Protected endpoints ───────────────────────────────────────────
+
 @app.get("/api/jobs")
-def get_jobs(db: Session = Depends(get_db)):
-    # Refresh the session to see latest data from other processes (bot, worker)
+def get_jobs(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     db.expire_all()
     jobs = db.query(Job).order_by(Job.created_at.desc()).all()
     return [
@@ -55,8 +98,7 @@ def get_jobs(db: Session = Depends(get_db)):
     ]
 
 @app.get("/api/jobs/completed")
-def get_completed_jobs(db: Session = Depends(get_db)):
-    """Return completed jobs that have a file_path (for Library page)."""
+def get_completed_jobs(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     db.expire_all()
     jobs = db.query(Job).filter(
         Job.state == JobState.COMPLETED,

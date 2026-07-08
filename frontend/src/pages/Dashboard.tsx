@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { Clock, CheckCircle, AlertCircle, RefreshCw, Loader2, Upload, WifiOff } from 'lucide-react';
 
 interface Job {
@@ -17,7 +17,7 @@ export function Dashboard() {
 
   const fetchJobs = async () => {
     try {
-      const res = await axios.get('/api/jobs');
+      const res = await api.get('/api/jobs');
       setJobs(res.data);
       setConnectionError(false);
     } catch (e) {

@@ -1,6 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, Library as LibraryIcon, Activity } from 'lucide-react';
+import { Home, Library as LibraryIcon, Activity, LogOut } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -11,11 +11,17 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 export function Sidebar() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navItems = [
     { name: t('queue') || 'Dashboard', path: '/', icon: Home },
     { name: t('library') || 'Library', path: '/library', icon: LibraryIcon },
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('dms_token');
+    navigate('/login');
+  };
 
   return (
     <div className="w-64 bg-gray-900 border-r border-gray-800 text-white flex flex-col h-screen shadow-2xl">
@@ -46,6 +52,16 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="px-4 pb-6">
+        <button
+          onClick={handleLogout}
+          className="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 text-gray-500 hover:bg-red-500/10 hover:text-red-400 w-full"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Çıkış Yap</span>
+        </button>
+      </div>
     </div>
   );
 }

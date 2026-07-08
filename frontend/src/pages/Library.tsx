@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { Download, Film, Loader2, FolderOpen } from 'lucide-react';
 
 interface CompletedJob {
@@ -17,7 +17,7 @@ export function Library() {
   useEffect(() => {
     const fetchCompleted = async () => {
       try {
-        const res = await axios.get('/api/jobs/completed');
+        const res = await api.get('/api/jobs/completed');
         setItems(res.data);
       } catch (e) {
         console.error(e);
