@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Clock, CheckCircle, AlertCircle, RefreshCw, Loader2, Upload, WifiOff } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, RefreshCw, Loader2, Upload, WifiOff, Send, LinkIcon } from 'lucide-react';
 
 interface Job {
   id: number;
@@ -14,6 +14,9 @@ export function Dashboard() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
+  const [url, setUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchJobs = async () => {
     try {
@@ -33,6 +36,27 @@ export function Dashboard() {
     const interval = setInterval(fetchJobs, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url.trim() || submitting) return;
+
+    setSubmitting(true);
+    setSubmitMessage(null);
+
+    try {
+      const res = await api.post('/api/jobs/submit', { url: url.trim() });
+      setSubmitMessage({ type: 'success', text: `✅ Görev eklendi! (Job #${res.data.id})` });
+      setUrl('');
+      fetchJobs();
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Görev gönderilemedi.';
+      setSubmitMessage({ type: 'error', text: `❌ ${msg}` });
+    } finally {
+      setSubmitting(false);
+      setTimeout(() => setSubmitMessage(null), 4000);
+    }
+  };
 
   const getStateColor = (state: string) => {
     switch(state) {
@@ -60,8 +84,44 @@ export function Dashboard() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-        <p className="text-gray-400 mt-1">Real-time status of your media server jobs.</p>
+        <p className="text-gray-400 mt-1">İndirme görevi gönder ve işlemleri canlı takip et.</p>
       </div>
+
+      {/* URL Submit Form */}
+      <form onSubmit={handleSubmit} className="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <LinkIcon className="w-4 h-4 text-gray-500" />
+            </div>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Video linkini yapıştır (YouTube, Kick, Facebook...)"
+              className="w-full bg-gray-800/50 border border-gray-700 text-white rounded-xl px-4 py-3 pl-11 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all placeholder-gray-500"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting || !url.trim()}
+            className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/30 disabled:cursor-not-allowed text-white font-medium rounded-xl px-6 py-3 transition-all duration-300 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center gap-2 whitespace-nowrap"
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Gönder
+          </button>
+        </div>
+        {submitMessage && (
+          <div className={`mt-3 text-sm px-4 py-2.5 rounded-xl ${
+            submitMessage.type === 'success' 
+              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+              : 'bg-red-500/10 border border-red-500/20 text-red-400'
+          }`}>
+            {submitMessage.text}
+          </div>
+        )}
+      </form>
 
       {connectionError && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-5 py-4 flex items-center gap-3">
@@ -117,8 +177,8 @@ export function Dashboard() {
                     <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center justify-center">
                         <Clock className="w-12 h-12 text-gray-700 mb-3" />
-                        <p>No active jobs found.</p>
-                        <p className="text-sm mt-1">Send a link via Telegram to start!</p>
+                        <p>Henüz bir görev yok.</p>
+                        <p className="text-sm mt-1">Yukarıdan link atarak veya Telegram'dan başlayabilirsiniz.</p>
                       </div>
                     </td>
                   </tr>

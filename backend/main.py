@@ -2,6 +2,7 @@ import os
 import jwt
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -78,6 +79,27 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     return {"access_token": token, "token_type": "bearer"}
 
 # ─── Protected endpoints ───────────────────────────────────────────
+
+class UrlSubmit(BaseModel):
+    url: str
+
+@app.post("/api/jobs/submit")
+def submit_job(body: UrlSubmit, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    """Submit a URL for download and processing."""
+    from app.worker.tasks import process_media_job
+
+    url = body.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL cannot be empty")
+
+    job = Job(original_url=url, state=JobState.PENDING)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    process_media_job.delay(job.id)
+
+    return {"id": job.id, "message": "Job submitted successfully"}
 
 @app.get("/api/jobs")
 def get_jobs(db: Session = Depends(get_db), user: str = Depends(get_current_user)):
