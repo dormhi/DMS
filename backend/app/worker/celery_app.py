@@ -16,4 +16,9 @@ celery_app.conf.update(
     result_serializer='json',
     timezone='UTC',
     enable_utc=True,
+    # Allow long-running tasks (6+ hour VOD downloads)
+    task_soft_time_limit=None,
+    task_time_limit=None,
+    # Don't prefetch tasks — one long download shouldn't block the next
+    worker_prefetch_multiplier=1,
 )

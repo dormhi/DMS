@@ -44,22 +44,36 @@ def process_media_job(self, job_id: int):
         
         job.file_path = final_file_path
         
-        # 3. Uploading Phase
+        # 3. Uploading Phase (Telegram only for files under 50MB)
         if job.chat_id:
-            job.state = JobState.UPLOADING
-            db.commit()
-            
             bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-            if bot_token and os.path.exists(final_file_path):
-                url = f"https://api.telegram.org/bot{bot_token}/sendVideo"
+            file_size = os.path.getsize(final_file_path) if os.path.exists(final_file_path) else 0
+            max_telegram_size = 50 * 1024 * 1024  # 50MB
+
+            if bot_token and file_size > 0 and file_size <= max_telegram_size:
+                job.state = JobState.UPLOADING
+                db.commit()
+                
+                tg_url = f"https://api.telegram.org/bot{bot_token}/sendVideo"
                 with open(final_file_path, "rb") as video_file:
                     resp = requests.post(
-                        url,
+                        tg_url,
                         data={"chat_id": job.chat_id, "caption": "✅ İşleminiz başarıyla tamamlandı!"},
-                        files={"video": video_file}
+                        files={"video": video_file},
+                        timeout=300,
                     )
                     if resp.status_code != 200:
                         logging.error(f"Telegram upload failed: {resp.text}")
+            elif bot_token and file_size > max_telegram_size:
+                # File too large for Telegram — notify user
+                size_mb = round(file_size / (1024 * 1024))
+                tg_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                requests.post(tg_url, data={
+                    "chat_id": job.chat_id,
+                    "text": f"✅ İndirme tamamlandı! ({size_mb} MB)\n\n"
+                           f"⚠️ Dosya Telegram limiti (50MB) üzerinde olduğu için gönderilemedi.\n"
+                           f"📥 Web kütüphanesinden indirebilirsiniz.",
+                }, timeout=10)
                         
         job.state = JobState.COMPLETED
         db.commit()

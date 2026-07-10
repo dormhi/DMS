@@ -6,11 +6,22 @@ from app.plugins.base import BaseDownloader
 class YTDLPBaseDownloader(BaseDownloader):
     def get_ydl_opts(self, output_dir: str) -> dict:
         return {
-            'outtmpl': os.path.join(output_dir, '%(title)s_%(id)s.%(ext)s'),
+            'outtmpl': os.path.join(output_dir, '%(title).80s_%(id)s.%(ext)s'),
             'format': 'bestvideo+bestaudio/best',
             'merge_output_format': 'mp4',
             'quiet': False,
             'no_warnings': True,
+            # Retry and timeout settings for long downloads
+            'retries': 10,
+            'fragment_retries': 10,
+            'file_access_retries': 5,
+            'socket_timeout': 30,
+            # Continue partial downloads
+            'continuedl': True,
+            # Don't abort on unavailable fragments (common in long VODs)
+            'skip_unavailable_fragments': True,
+            # Buffer size for faster downloads
+            'buffersize': 1024 * 1024,  # 1MB buffer
         }
 
     def download(self, url: str, output_dir: str) -> Optional[str]:
