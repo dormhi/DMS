@@ -31,10 +31,11 @@ bot = Bot(token=BOT_TOKEN)
 
 class PrivateModeMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: Message, data: dict):
-        if ALLOWED_USER_IDS and event.from_user:
-            if event.from_user.id not in ALLOWED_USER_IDS:
-                logging.warning(f"Unauthorized user {event.from_user.id} tried to use the bot")
-                return
+        if not event.from_user:
+            return await handler(event, data)
+        if event.from_user.id not in ALLOWED_USER_IDS:
+            logging.warning(f"Unauthorized user {event.from_user.id} tried to use the bot")
+            return
         return await handler(event, data)
 
 
