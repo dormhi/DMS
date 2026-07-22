@@ -23,21 +23,27 @@ def process_media_job(self, job_id: int):
         return "Job not found"
     
     try:
-        # 1. Download Phase
-        job.state = JobState.DOWNLOADING
-        db.commit()
-        
-        downloader = get_downloader(job.original_url)
-        downloaded_file = downloader.download(job.original_url, DOWNLOAD_DIR)
-        
-        if not downloaded_file:
-            raise Exception("Download failed, no file returned.")
-            
-        job.file_path = downloaded_file
+        # If file already exists (e.g. Telegram upload), skip download
+        if job.file_path and os.path.exists(job.file_path):
+            logging.info(f"Skipping download, file already exists: {job.file_path}")
+        else:
+            # 1. Download Phase
+            job.state = JobState.DOWNLOADING
+            db.commit()
+
+            downloader = get_downloader(job.original_url)
+            downloaded_file = downloader.download(job.original_url, DOWNLOAD_DIR)
+
+            if not downloaded_file:
+                raise Exception("Download failed, no file returned.")
+
+            job.file_path = downloaded_file
+
         job.state = JobState.PROCESSING
         db.commit()
-        
+
         # 2. Processing Phase
+        downloaded_file = job.file_path
         from app.plugins.processors.normalize import NormalizeProcessor
         processor = NormalizeProcessor()
         final_file_path = processor.process(downloaded_file)

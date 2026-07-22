@@ -140,6 +140,19 @@ def get_completed_jobs(db: Session = Depends(get_db), user: str = Depends(get_cu
         })
     return result
 
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: int, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.file_path and os.path.exists(job.file_path):
+        os.remove(job.file_path)
+
+    db.delete(job)
+    db.commit()
+    return {"message": f"Job #{job_id} deleted successfully"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

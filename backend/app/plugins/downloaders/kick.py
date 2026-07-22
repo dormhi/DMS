@@ -7,15 +7,15 @@ class KickDownloader(YTDLPBaseDownloader):
 
     def get_ydl_opts(self, output_dir: str) -> dict:
         opts = super().get_ydl_opts(output_dir)
-        # Kick-specific: VODs are HLS streams, need concurrent fragment downloads
         opts.update({
-            'concurrent_fragment_downloads': 5,
-            # Kick VODs can be very long, increase retries
-            'retries': 20,
-            'fragment_retries': 20,
-            # Some Kick VODs need cookies or specific extractor args
-            'extractor_args': {'kick': {'api_host': 'kick.com'}},
-            # Don't limit download speed
+            'concurrent_fragment_downloads': 8,
+            'retries': 30,
+            'fragment_retries': 30,
+            'extractor_retries': 5,
             'throttledratelimit': None,
+            'live_from_start': True,
+            'hls_use_mpegts': True,
+            'socket_timeout': 120,
+            'wait_for_video': (60, 180),
         })
         return opts
