@@ -21,4 +21,10 @@ celery_app.conf.update(
     task_time_limit=None,
     # Don't prefetch tasks — one long download shouldn't block the next
     worker_prefetch_multiplier=1,
+    beat_schedule={
+        "cleanup-expired-archive-media-hourly": {
+            "task": "app.worker.tasks.cleanup_archive_task",
+            "schedule": 60 * 60,
+        },
+    },
 )

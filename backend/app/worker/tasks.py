@@ -2,6 +2,7 @@ from app.worker.celery_app import celery_app
 from app.db.session import SessionLocal, init_db
 from app.db.models.job import Job, JobState
 from app.plugins.downloaders.factory import get_downloader
+from app.services.archive_cleanup import cleanup_archive
 import time
 import os
 import requests
@@ -83,6 +84,8 @@ def process_media_job(self, job_id: int):
                         
         job.state = JobState.COMPLETED
         db.commit()
+        # Enforce the storage quota immediately after new media is available.
+        cleanup_archive_task.delay()
         
     except Exception as e:
         job.state = JobState.FAILED
@@ -93,3 +96,13 @@ def process_media_job(self, job_id: int):
         db.close()
         
     return "Job finished"
+
+
+@celery_app.task(name="app.worker.tasks.cleanup_archive_task")
+def cleanup_archive_task():
+    """Scheduled archive retention and quota enforcement."""
+    db = SessionLocal()
+    try:
+        return cleanup_archive(db, DOWNLOAD_DIR)
+    finally:
+        db.close()

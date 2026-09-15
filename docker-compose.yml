@@ -35,6 +35,20 @@ services:
       - redis
       - backend
 
+  beat:
+    build: ./backend
+    container_name: dms_beat
+    restart: unless-stopped
+    command: celery -A app.worker.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:////data/dms.db
+      - REDIS_URL=redis://redis:6379/0
+      - DOWNLOAD_DIR=/data/downloads
+    depends_on:
+      - redis
+
   bot:
     build: ./backend
     container_name: dms_bot
