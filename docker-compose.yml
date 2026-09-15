@@ -5,8 +5,6 @@ services:
     build: ./backend
     container_name: dms_backend
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     volumes:
       - ./data:/data
     env_file:
@@ -80,7 +78,7 @@ services:
     container_name: dms_frontend
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "127.0.0.1:8080:80"
     depends_on:
       - backend
 

@@ -1,7 +1,10 @@
+import logging
 import os
-import yt_dlp
 from typing import Optional
-from app.plugins.base import BaseDownloader
+
+import yt_dlp
+
+from app.plugins.base import BaseDownloader, DownloadProgressCallback
 
 class YTDLPBaseDownloader(BaseDownloader):
     def get_ydl_opts(self, output_dir: str) -> dict:
@@ -24,9 +27,31 @@ class YTDLPBaseDownloader(BaseDownloader):
             'buffersize': 1024 * 1024,  # 1MB buffer
         }
 
-    def download(self, url: str, output_dir: str) -> Optional[str]:
+    def download(
+        self,
+        url: str,
+        output_dir: str,
+        progress_callback: Optional[DownloadProgressCallback] = None,
+    ) -> Optional[str]:
         os.makedirs(output_dir, exist_ok=True)
         opts = self.get_ydl_opts(output_dir)
+
+        if progress_callback:
+            def report_progress(progress: dict) -> None:
+                try:
+                    progress_callback({
+                        "status": progress.get("status"),
+                        "downloaded_bytes": progress.get("downloaded_bytes", 0),
+                        "total_bytes": progress.get("total_bytes"),
+                        "total_bytes_estimate": progress.get("total_bytes_estimate"),
+                        "speed": progress.get("speed"),
+                        "eta": progress.get("eta"),
+                    })
+                except Exception:
+                    # Telegram status failures must never interrupt yt-dlp.
+                    logging.exception("Download progress callback failed")
+
+            opts["progress_hooks"] = [report_progress]
         
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
@@ -47,6 +72,5 @@ class YTDLPBaseDownloader(BaseDownloader):
                     
                 raise Exception("Downloaded file not found on disk.")
         except Exception as e:
-            import logging
             logging.error(f"Error downloading {url}: {e}")
             raise

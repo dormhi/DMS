@@ -9,6 +9,7 @@ from aiogram.types import Message
 from app.db.session import SessionLocal, init_db
 from app.db.models.job import Job, JobState
 from app.worker.tasks import process_media_job
+from app.telegram.status import safe_error_summary
 
 init_db()
 
@@ -110,11 +111,12 @@ async def command_download_handler(message: Message) -> None:
         db.commit()
         db.refresh(job)
 
+        status_message = await message.answer(f"⏳ İş #{job.id} kuyruğa alındı.")
+        job.telegram_status_message_id = status_message.message_id
+        db.commit()
         process_media_job.delay(job.id)
-
-        await message.answer(f"✅ İndirme görevi kuyruğa eklendi! (Job ID: {job.id})\nDurumu öğrenmek için /jobs yazabilirsiniz.")
     except Exception as e:
-        await message.answer(f"Hata oluştu: {str(e)}")
+        await message.answer(f"Hata oluştu: {safe_error_summary(e)}")
     finally:
         db.close()
 
@@ -140,39 +142,72 @@ async def command_jobs_handler(message: Message) -> None:
 
 @dp.message(F.video)
 async def handle_video_upload(message: Message) -> None:
-    await message.answer("Video alındı. Önce sunucuya indiriliyor, ardından işleme alınacak...")
-
     file_id = message.video.file_id
     filename = message.video.file_name or f"{file_id}.mp4"
     dest_path = os.path.join(DOWNLOAD_DIR, filename)
+
+    db = SessionLocal()
+    job = Job(
+        original_url=f"Telegram upload: {filename}",
+        chat_id=str(message.chat.id),
+        file_path=dest_path,
+        state=JobState.PENDING,
+    )
+    try:
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        status_message = await message.answer(f"⏳ İş #{job.id}: video Telegram'dan alınıyor...")
+        job.telegram_status_message_id = status_message.message_id
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        await message.answer(f"Hata oluştu: {safe_error_summary(e)}")
+        return
+    finally:
+        db.close()
 
     try:
         tg_file = await bot.get_file(file_id)
         await bot.download_file(tg_file.file_path, dest_path)
     except Exception as e:
         logging.error(f"Failed to download Telegram file {file_id}: {e}")
-        await message.answer(f"Dosya sunucudan indirilemedi: {str(e)}")
+        db = SessionLocal()
+        try:
+            failed_job = db.query(Job).filter(Job.id == job.id).first()
+            if failed_job:
+                failed_job.state = JobState.FAILED
+                failed_job.error_message = safe_error_summary(e)
+                db.commit()
+        finally:
+            db.close()
+        try:
+            await status_message.edit_text(
+                f"❌ İş #{job.id} başarısız.\nNeden: {safe_error_summary(e)}"
+            )
+        except Exception:
+            logging.exception("Could not update Telegram upload status")
         return
 
-    db = SessionLocal()
     try:
-        job = Job(
-            original_url=f"Telegram upload: {filename}",
-            chat_id=str(message.chat.id),
-            file_path=dest_path,
-            state=JobState.PENDING,
-        )
-        db.add(job)
-        db.commit()
-        db.refresh(job)
-
         process_media_job.delay(job.id)
-
-        await message.answer(f"✅ Onarım görevi kuyruğa eklendi! (Job ID: {job.id})")
+        await status_message.edit_text(f"⏳ İş #{job.id} kuyruğa alındı.")
     except Exception as e:
-        await message.answer(f"Hata oluştu: {str(e)}")
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            failed_job = db.query(Job).filter(Job.id == job.id).first()
+            if failed_job:
+                failed_job.state = JobState.FAILED
+                failed_job.error_message = safe_error_summary(e)
+                db.commit()
+        finally:
+            db.close()
+        try:
+            await status_message.edit_text(
+                f"❌ İş #{job.id} başlatılamadı.\nNeden: {safe_error_summary(e)}"
+            )
+        except Exception:
+            logging.exception("Could not update Telegram upload status")
 
 
 async def main() -> None:

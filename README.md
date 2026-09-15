@@ -29,7 +29,7 @@ Welcome to **Dormhi Media Server (DMS)**! DMS is a self-hosted media automation 
 * **Database**: SQLite with WAL mode — a deliberate, sufficient choice for one owner and low-concurrency personal use. PostgreSQL is only needed for a future multi-user or higher-concurrency deployment.
 * **Message Broker & Worker**: Redis + Celery
 * **Media Engines**: `yt-dlp` (latest), FFmpeg
-* **Frontend**: React 19, TypeScript, TailwindCSS, Vite
+* **Frontend**: React 19, TypeScript, TailwindCSS, Vite build + Nginx
 * **Infrastructure**: 100% Dockerized via `docker-compose` (6 services: backend, worker, beat scheduler, bot, Redis, and frontend)
 
 ## 🔌 Plugin System
@@ -55,7 +55,13 @@ DMS is highly modular. Adding a new downloader is as simple as creating a short 
    cp .env.example .env
    nano .env
    ```
-   Fill in your `TELEGRAM_BOT_TOKEN`. Leave `TELEGRAM_ALLOWED_USER_IDS` empty for now — you will add it after finding your ID.
+   Fill in `TELEGRAM_BOT_TOKEN`. Leave `TELEGRAM_ALLOWED_USER_IDS` empty for now — you will add it after finding your ID. You must also set a private web username, password, and JWT secret before the services can start:
+   ```env
+   DMS_ADMIN_USERNAME=your_admin_username
+   DMS_ADMIN_PASSWORD=use_a_unique_long_password
+   JWT_SECRET=replace_with_a_random_64_character_hex_secret
+   ```
+   Generate the JWT value with `openssl rand -hex 32`.
 
 3. Start the system:
    ```bash
@@ -86,20 +92,27 @@ DMS is highly modular. Adding a new downloader is as simple as creating a short 
   - **Upload a video file** — Send any video file directly to the bot for repair/optimization.
   - The bot will send the processed MP4 back once the job completes (files over 50MB get a notification instead).
 
-* **Web UI**: Visit `http://localhost:5173`
+* **Web UI**: On a local machine, visit `http://127.0.0.1:8080`.
   - **Dashboard** — Submit download URLs and monitor job status in real-time.
   - **Library** — Browse completed videos with **Play** (stream in browser), **Download**, and **Delete** buttons.
-  - **Login**: Default credentials are `admin` / `admin` (personal use — change in `backend/main.py` if needed).
+  - **Login**: Use the `DMS_ADMIN_USERNAME` and `DMS_ADMIN_PASSWORD` values from `.env`.
 
 * **Supported Platforms**: Kick (including long VODs), YouTube, Twitter/X, Facebook, TikTok, Twitch, and any site supported by yt-dlp.
 
-### 4. Personal VDS Deployment
+### 4. Tailscale-protected VDS deployment
 
-If you run DMS on a VDS and access the web panel through its external IP, treat it as a private administration tool:
+DMS is designed to stay private on a VDS. The web panel listens only on `127.0.0.1:8080`; the API and Redis do not publish host ports. Install [Tailscale on the VDS](https://tailscale.com/download/linux), add it to your private tailnet, then proxy the local panel with Tailscale Serve:
 
-* Redis is intentionally available only inside the Docker network; do not publish it or expose it to the internet.
-* Restrict web-panel access to your trusted IP addresses with a firewall. Put a reverse proxy with HTTPS in front of it when accessing it over the internet.
-* Change the default web login credentials in `backend/main.py` before exposing the panel beyond your local network.
+```bash
+tailscale up
+tailscale serve --bg http://127.0.0.1:8080
+tailscale serve status
+```
+
+Open the HTTPS URL shown by `tailscale serve status` from another device in the same tailnet. Tailscale Serve provisions TLS for this private endpoint; do not use Tailscale Funnel, which would make it public. Tailscale may prompt you to enable HTTPS for the tailnet during the first setup.
+
+* Keep the VDS firewall closed to inbound DMS ports; Tailscale only needs its normal outbound connectivity.
+* Keep the tailnet limited to your own or explicitly trusted devices. The DMS web login remains a second access check.
 * You are responsible for the media you download and for complying with the terms and policies of each source platform.
 
 ---
@@ -127,7 +140,7 @@ If you run DMS on a VDS and access the web panel through its external IP, treat 
 * **Veritabanı**: SQLite WAL modu — tek sahipli, düşük eşzamanlılıklı kişisel kullanım için bilinçli ve yeterli tercihtir. PostgreSQL ancak ileride çok kullanıcılı veya daha yüksek eşzamanlılıklı bir kurulum gerekirse anlamlıdır.
 * **Mesaj Kuyruğu & Worker**: Redis + Celery
 * **Medya Motorları**: `yt-dlp` (güncel sürüm), FFmpeg
-* **Frontend**: React 19, TypeScript, TailwindCSS, Vite
+* **Frontend**: React 19, TypeScript, TailwindCSS, Vite derlemesi + Nginx
 * **Altyapı**: Tamamen Dockerize (6 servis: backend, worker, beat zamanlayıcısı, bot, Redis ve frontend)
 
 ## 🔌 Eklenti (Plugin) Sistemi
@@ -153,7 +166,13 @@ Sistem son derece modülerdir. Yeni bir platform indirme desteği eklemek için 
    cp .env.example .env
    nano .env
    ```
-   `TELEGRAM_BOT_TOKEN` değerinizi girin. `TELEGRAM_ALLOWED_USER_IDS` satırını şimdilik boş bırakın — ID'nizi bulduktan sonra ekleyeceksiniz.
+   `TELEGRAM_BOT_TOKEN` değerini girin. `TELEGRAM_ALLOWED_USER_IDS` satırını şimdilik boş bırakın — ID'nizi bulduktan sonra ekleyeceksiniz. Servislerin başlaması için ayrıca size özel web kullanıcı adı, şifre ve JWT anahtarı zorunludur:
+   ```env
+   DMS_ADMIN_USERNAME=kendi_yonetici_adiniz
+   DMS_ADMIN_PASSWORD=benzersiz_ve_uzun_bir_sifre_kullanin
+   JWT_SECRET=rastgele_64_karakterli_hex_anahtarla_degistirin
+   ```
+   JWT değerini `openssl rand -hex 32` komutuyla üretebilirsiniz.
 
 3. Sistemi başlatın:
    ```bash
@@ -184,18 +203,25 @@ Sistem son derece modülerdir. Yeni bir platform indirme desteği eklemek için 
   - **Video dosyası gönderme** — Herhangi bir video dosyasını doğrudan bota gönderin, onarım/optimizasyon başlasın.
   - İşlem bittiğinde bot videoyu sohbetten geri atar (50MB üstü dosyalar için bilgilendirme mesajı gönderir).
 
-* **Web Arayüzü**: Tarayıcıdan `http://localhost:5173` adresine gidin.
+* **Web Arayüzü**: Yerel makinede tarayıcıdan `http://127.0.0.1:8080` adresine gidin.
   - **Dashboard** — URL göndererek indirme başlatın, tüm işlerin durumunu canlı takip edin.
   - **Kütüphane (Library)** — Tamamlanmış videoları görüntüleyin. Her video için **Oynat**, **İndir** ve **Sil** butonları mevcut.
-  - **Giriş**: Varsayılan kullanıcı adı ve şifre `admin` / `admin`'dir (kişisel kullanım — değiştirmek için `backend/main.py` dosyasını düzenleyin).
+  - **Giriş**: `.env` içindeki `DMS_ADMIN_USERNAME` ve `DMS_ADMIN_PASSWORD` değerlerini kullanın.
 
 * **Desteklenen Platformlar**: Kick (uzun VOD'lar dahil), YouTube, Twitter/X, Facebook, TikTok, Twitch ve yt-dlp'nin desteklediği tüm siteler.
 
-### 4. Kişisel VDS Kurulumu
+### 4. Tailscale korumalı VDS kurulumu
 
-DMS'i bir VDS üzerinde çalıştırıp web paneline dış IP üzerinden erişecekseniz, sistemi kişisel bir yönetim aracı olarak ele alın:
+DMS, VDS üzerinde gizli kalacak şekilde tasarlanmıştır. Web paneli yalnızca `127.0.0.1:8080` üzerinde dinler; API ve Redis host portu yayınlamaz. [Tailscale'i VDS'e kurun](https://tailscale.com/download/linux), sunucuyu özel tailnet'inize ekleyin ve yerel paneli Tailscale Serve ile proxy edin:
 
-* Redis yalnızca Docker ağı içinde erişilebilir olacak şekilde yapılandırılmıştır; Redis'i internete açmayın veya host portu olarak yayınlamayın.
-* Web paneline erişimi firewall ile yalnızca güvendiğiniz IP adreslerine sınırlayın. İnternet üzerinden erişimde önüne HTTPS kullanan bir reverse proxy koyun.
-* Paneli yerel ağınızın dışına açmadan önce `backend/main.py` içindeki varsayılan web giriş bilgilerini değiştirin.
+```bash
+tailscale up
+tailscale serve --bg http://127.0.0.1:8080
+tailscale serve status
+```
+
+`tailscale serve status` komutunun gösterdiği HTTPS adresini aynı tailnet içindeki başka bir cihazdan açın. Tailscale Serve, bu özel uç nokta için TLS sağlar; sistemi herkese açık yapacağı için Tailscale Funnel kullanmayın. İlk kurulumda Tailscale, tailnet için HTTPS'i etkinleştirmenizi isteyebilir.
+
+* VDS firewall'ında DMS için gelen portları kapalı tutun; Tailscale'in yalnızca normal çıkış bağlantısına ihtiyacı vardır.
+* Tailnet'i yalnızca kendi cihazlarınız veya açıkça güvendiğiniz cihazlarla sınırlayın. DMS web girişi ikinci erişim kontrolü olarak kalır.
 * İndirdiğiniz içeriklerden ve her kaynak platformun kullanım koşulları ile politikalarına uymaktan siz sorumlusunuz.

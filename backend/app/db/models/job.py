@@ -19,6 +19,7 @@ class Job(Base):
     original_url = Column(String, index=True, nullable=True)
     file_path = Column(String, nullable=True)
     chat_id = Column(String, nullable=True)
+    telegram_status_message_id = Column(Integer, nullable=True)
     state = Column(Enum(JobState), default=JobState.PENDING, index=True)
     error_message = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

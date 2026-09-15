@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.db.session import get_db, init_db
@@ -23,21 +22,20 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Serve downloaded/processed files as static
 app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 
-# ─── Auth (hardcoded) ───────────────────────────────────────────────
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin"
-JWT_SECRET = "dms_hardcoded_secret_key_2024"
+# ─── Auth ───────────────────────────────────────────────────────────
+def required_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"{name} must be set in the environment.")
+    return value
+
+
+ADMIN_USERNAME = required_env("DMS_ADMIN_USERNAME")
+ADMIN_PASSWORD = required_env("DMS_ADMIN_PASSWORD")
+JWT_SECRET = required_env("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
 

@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Callable, Optional
+
+DownloadProgressCallback = Callable[[dict[str, Any]], None]
 
 class BaseDownloader(ABC):
     @abstractmethod
@@ -8,7 +10,12 @@ class BaseDownloader(ABC):
         pass
         
     @abstractmethod
-    def download(self, url: str, output_dir: str) -> Optional[str]:
+    def download(
+        self,
+        url: str,
+        output_dir: str,
+        progress_callback: Optional[DownloadProgressCallback] = None,
+    ) -> Optional[str]:
         """Downloads the media and returns the path to the downloaded file."""
         pass
 
