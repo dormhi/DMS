@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      pip-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories: [/frontend, /backend]
+    schedule:
+      interval: weekly
+    ignore:
+      # Major runtime bumps (e.g. Node/Python) are done by hand to stay on LTS lines
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
